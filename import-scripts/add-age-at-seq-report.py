@@ -36,7 +36,7 @@ def load_sample_seq_date(seq_date_file, convert_to_days):
 				age_at_seq_report_value = age_at_seq_report_value*AVERAGE_DAYS_PER_YEAR
 			SAMPLE_SEQ_DATE_MAP[line['SAMPLE_ID']] = str(int(math.ceil(age_at_seq_report_value)))
 		except KeyError:
-			print "Patient age not found for '" + line['PATIENT_ID'] + "'"
+			print("Patient age not found for '%s'" % (line['PATIENT_ID'], file = ERROR_FILE)
 			SAMPLE_SEQ_DATE_MAP[line['SAMPLE_ID']] = 'NA'
 
 
@@ -73,20 +73,20 @@ def add_age_at_seq_report(clinical_file):
 	data_reader = csv.DictReader(data_file, dialect = 'excel-tab')
 	for line in data_reader:
 		line[AGE_AT_SEQ_REPORT_FIELD] = SAMPLE_SEQ_DATE_MAP[line['SAMPLE_ID']]
-		formatted_data = map(lambda x: line.get(x, ''), header)
+		formatted_data = list(map(lambda x: line.get(x, ''), header))
 		output_data.append('\t'.join(formatted_data))
 	data_file.close()
 	output_file = open(clinical_file, 'w')
 	output_file.write('\n'.join(output_data))
 	output_file.close()
-	print 'Finished adding age at seq report'
+	print('Finished adding age at seq report', file = OUTPUT_FILE)
 
 
 def get_file_header(filename):
 	""" Returns the file header. """
 	data_file = open(filename, 'rU')
 	filedata = [x for x in data_file.readlines() if not x.startswith('#')]
-	header = map(str.strip, filedata[0].split('\t'))
+	header = list(map(str.strip, filedata[0].split('\t')))
 	data_file.close()
 	return header
 
@@ -94,11 +94,11 @@ def get_file_header(filename):
 def validate_file_header(filename, key_column):
 	""" Validates that the key column exists in the file header. """
 	if not key_column in get_file_header(filename):
-		print >> ERROR_FILE, "Could not find key column '" + key_column + "' in file header for: " + filename + "! Please make sure this column exists before running script."
+		print("Could not find key column '%s' in file header for: %s! Please make sure this column exists before running script." % (key_column, filename), file = ERROR_FILE)
 		usage()
 
 def usage():
-	print >> OUTPUT_FILE, "add-age-at-seq-report.py --clinical-file [path/to/clinical/file] --seq-date-file [path/to/seq/date/file] --age-file [path/to/age/file] --convert-to-days [true|false]"
+	print("python3 add-age-at-seq-report.py --clinical-file [path/to/clinical/file] --seq-date-file [path/to/seq/date/file] --age-file [path/to/age/file] --convert-to-days [true|false]", file = OUTPUT_FILE)
 	sys.exit(2)
 
 def main():
@@ -117,19 +117,19 @@ def main():
 
 
 	if not clinical_file or not seq_date_file or not age_file:
-		print >> ERROR_FILE, "Clinical file, seq date file, and age file must be provided."
+		print("Clinical file, seq date file, and age file must be provided.", file = ERROR_FILE)
 		usage()
 
 	if not os.path.exists(clinical_file):
-		print >> ERROR_FILE, "No such file: " + clinical_file
+		print("No such file: %s" % (clinical_file), file = ERROR_FILE)
 		usage()
 
 	if not os.path.exists(seq_date_file):
-		print >> ERROR_FILE, "No such file: " + seq_date_file
+		print("No such file: %s" % (seq_date_file), file = ERROR_FILE)
 		uage()
 
 	if not os.path.exists(age_file):
-		print >> ERROR_FILE, "No such file: " + age_file
+		print("No such file: %s" % (age_file), file = ERROR_FILE)
 		usage()
 
 	# validate file headers
