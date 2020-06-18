@@ -187,23 +187,23 @@ def get_ordered_metadata_and_add_new_attribute(clinical_file, new_attribute):
     return ordered_metadata_lines
 
 def write_metadata_headers(metadata_lines, clinical_filename):
-    print '\t'.join(metadata_lines[DISPLAY_NAME]).replace('\n', '')
-    print '\t'.join(metadata_lines[DESCRIPTION]).replace('\n', '')
-    print '\t'.join(metadata_lines[DATATYPE]).replace('\n', '')
+    print('\t'.join(metadata_lines[DISPLAY_NAME]).replace('\n', ''))
+    print('\t'.join(metadata_lines[DESCRIPTION]).replace('\n', ''))
+    print('\t'.join(metadata_lines[DATATYPE]).replace('\n', ''))
     if has_legacy_clinical_metadata_headers(clinical_filename):
-        print '\t'.join(metadata_lines[ATTRIBUTE_TYPE]).replace('\n', '')
-    print '\t'.join(metadata_lines[PRIORITY]).replace('\n', '')
+        print('\t'.join(metadata_lines[ATTRIBUTE_TYPE]).replace('\n', ''))
+    print('\t'.join(metadata_lines[PRIORITY]).replace('\n', ''))
 
 def write_header_line(line, output_file):
-    os.write(output_file, '#')
-    os.write(output_file, '\t'.join(line))
-    os.write(output_file, '\n')
+    output_file.write('#')
+    output_file.write('\t'.join(line))
+    output_file.write('\n')
 
 def write_data(data_file, output_file):
     with open(data_file) as source_file:
         for line in source_file:
             if not line.startswith("#"):
-                os.write(output_file, line)
+                output_file.write(line)
 
 def write_and_exclude_columns(clinical_filename, exclude_column_names, output_file):
     header = get_header(clinical_filename)

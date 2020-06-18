@@ -1,13 +1,13 @@
 # COMPLETED
 import-scripts/add-age-at-seq-report.py
+import-scripts/add_clinical_attribute_metadata_headers.py
+import-scripts/clinicalfile_utils.py
 
 
 # TODO
-import-scripts/add_clinical_attribute_metadata_headers.py
 import-scripts/add_clinical_records.py
 import-scripts/archer_fusions_merger.py
 import-scripts/cleanup-mirna-records.py
-import-scripts/clinicalfile_utils.py
 import-scripts/create_case_lists_by_cancer_type.py
 import-scripts/cvr_consent_status_checker.py
 import-scripts/cvr_dmp_endpoint_utility.py

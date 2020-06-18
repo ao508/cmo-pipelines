@@ -36,12 +36,12 @@ def check_valid_studyid(study_id, base_cdd_url):
     check_response_returned(response)
     response_as_json = json.loads(response.text)
     if study_id not in [overridden_study[OVERRIDDEN_STUDY_NAME_KEY] for overridden_study in response_as_json]:
-        print >> ERROR_FILE, 'Invalid study id: ' + study_id + ", there is no associated attributes in CDD"
+        print("Invalid study id: '%s', there is no associated attributes in CDD for this study" % (study_id), file = ERROR_FILE)
         sys.exit(2)
 
 def check_response_returned(response):
     if response.status_code != 200:
-        print >> ERROR_FILE, "Error code returned from CDD, aborting..."
+        print("Error code returned from CDD, aborting...", file = ERROR_FILE)
         sys.exit(2)
 
 def get_clinical_attribute_metadata_from_cdd(study_id, header, base_cdd_url):
@@ -116,11 +116,11 @@ def main():
     # check file (args) validity and return error if any file fails check
     missing_clinical_files = [clinical_file for clinical_file in clinical_files if not os.path.exists(clinical_file)]
     if len(missing_clinical_files) > 0:
-        print >> ERROR_FILE, 'File(s) not found: ' + ', '.join(missing_clinical_files)
+        print("File(s) not found: %s" % (", ".join(missing_clinical_files)), file = ERROR_FILE)
         sys.exit(2)
     not_writable_clinical_files = [clinical_file for clinical_file in clinical_files if not os.access(clinical_file,os.W_OK)]
     if len(not_writable_clinical_files) > 0:
-        print >> ERROR_FILE, 'File(s) not writable: ' + ', '.join(not_writable_clinical_files)
+        print("File(s) not writable: %s" % (", ".join(not_writable_clinical_files)), file = ERROR_FILE)
         sys.exit(2)
     if (study_id):
         check_valid_studyid(study_id, base_cdd_url)
@@ -132,15 +132,17 @@ def main():
     metadata_dictionary = get_clinical_attribute_metadata_from_cdd(study_id, all_attributes, base_cdd_url)
     # check metadata is defined for all attributes in CDD
     if len(metadata_dictionary.keys()) != len(all_attributes):
-        print >> ERROR_FILE, 'Error, metadata not found for attribute(s): ' + ', '.join(all_attributes.difference(metadata_dictionary.keys()))
+        print("Error, metadata not found for attribute(s): %s" % (", ".join(all_attributes.difference(metadata_dictionary.keys()))), file = ERROR_FILE)
     for clinical_file in clinical_files:
         # create temp file to write to
         temp_file, temp_file_name = tempfile.mkstemp()
+        # by default the open() opens files for writing in binary mode and we treat everything as if it is in  text mode
+        temp_file = open(temp_file, 'w')
         header = get_header(clinical_file)
         is_mixed_attribute_types_format = check_if_mixed_attribute_types_format(clinical_file)
         write_headers(header, metadata_dictionary, temp_file, is_mixed_attribute_types_format)
         write_data(clinical_file, temp_file)
-        os.close(temp_file)
+        temp_file.close()
         # replace original file with new file
         shutil.move(temp_file_name, clinical_file)
 
