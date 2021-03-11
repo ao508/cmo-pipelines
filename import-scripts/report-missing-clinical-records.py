@@ -48,7 +48,7 @@ CASE_LIST_DATATYPE = 'CASE_LIST'
 # FOR ORGANIZING DATA FILES BY DATATYPE
 GENETIC_ALTERATION_TYPES = {
     'PROFILE':['COPY_NUMBER_ALTERATION', 'PROTEIN_LEVEL', 'MRNA_EXPRESSION', 'METHYLATION'],
-    'NORMAL':['MUTATION_EXTENDED', 'FUSION', 'CLINICAL'],
+    'NORMAL':['MUTATION_EXTENDED', 'FUSION', 'CLINICAL', 'GENE_MATRIX'],
     'CASE_INDEPENDENT':['MUTSIG', 'GISTIC_GENES_AMP', 'GISTIC_GENES_DEL']
 }
 
@@ -122,7 +122,7 @@ def report_missing_clinical_records(study_directory, remove_normal_records, add_
             print >> OUTPUT_FILE, 'report_missing_clinical_records(), INFO: Found', len(non_normal_missing_samples), 'samples missing clinical info in:', properties['data_filename']
             non_normal_samples_missing_clinical_info_found = True # set to true since non-normal samples were found
             # update samples_missing_clinical_info and add missing sample set to main 'study_files' dict
-            update_samples_missing_clinical_info(samples_missing_clinical_info, non_normal_missing_samples)
+            update_samples_missing_clinical_info(meta_file, samples_missing_clinical_info, non_normal_missing_samples)
             study_files[meta_file]['missing_samples'] = set(non_normal_missing_samples)
 
         # if normal samples found then update main study files dict
@@ -155,7 +155,7 @@ def report_missing_clinical_records(study_directory, remove_normal_records, add_
     else:
         print >> OUTPUT_FILE, 'report_missing_clinical_records(), Clinical data files are not missing any samples. No changes to make.'
 
-def update_samples_missing_clinical_info(samples_missing_clinical_info, non_normal_missing_samples):
+def update_samples_missing_clinical_info(meta_file, samples_missing_clinical_info, non_normal_missing_samples):
     """
         Update samples_missing_clinical_info dict with non-normal missing sample set and update 'compiled_missing_clincal_sample_set'.
     """
@@ -341,7 +341,10 @@ def generate_samples_missing_clinical_info_report(output_data_directory, samples
     output_file.write('compiled_missing_clincal_sample_set\t' + ','.join(list(samples_missing_clinical_info['compiled_missing_clincal_sample_set'])) + '\n')
     for meta_file,missing_samples in samples_missing_clinical_info.items():
         if meta_file != 'compiled_missing_clincal_sample_set':
-            output_file.write(meta_file + '\t' + ','.join(list(missing_samples)))
+            output_file.write(meta_file)
+            output_file.write(':\t')
+            output_file.write(','.join(list(missing_samples)))
+            output_file.write('\n')
     output_file.close()
     print >> OUTPUT_FILE, 'generate_samples_missing_clinical_info_report(), Saved missing clinical records report to:', output_filename
 
@@ -361,17 +364,17 @@ def load_all_samples_for_study(study_directory):
 
     study_files = organize_study_files(study_directory)
     for meta_file,properties in study_files.items():
-        if properties['genetic_alteration_type'] in GENETIC_ALTERATION_TYPES['CASE_INDEPENDENT']:
+        if properties.get('genetic_alteration_type','') in GENETIC_ALTERATION_TYPES['CASE_INDEPENDENT']:
             print >> OUTPUT_FILE, 'load_all_samples_for_study(), WARN: Data file is not dependent on samples - file will be skipped:', meta_file
             continue
 
         # load samples from data file or case list file
-        if properties['datatype'] == CASE_LIST_DATATYPE:
+        if properties.get('datatype', '') == CASE_LIST_DATATYPE:
             samples = load_samples_from_case_list(properties)
         else:
             samples = load_samples_from_data_file(study_directory, properties)
             # if clinical sample or general clinical file then add samples to EXISTING_CLINICAL_SAMPLES_SET
-            if properties['datatype'] in [GENERAL_CLINICAL_DATATYPE, CLINICAL_SAMPLE_DATATYPE]:
+            if properties.get('datatype','') in [GENERAL_CLINICAL_DATATYPE, CLINICAL_SAMPLE_DATATYPE]:
                 EXISTING_CLINICAL_SAMPLES_SET.update(samples)
         # update study_files dict with sample set loaded
         study_files[meta_file]['sample_set'] = samples
@@ -395,6 +398,8 @@ def load_samples_from_data_file(study_directory, properties):
                 is_patient_id = True
             else:
                 case_id_column = 'SAMPLE_ID'
+        elif properties['genetic_alteration_type'] == 'GENE_MATRIX':
+            case_id_column = 'SAMPLE_ID'
         elif 'Tumor_Sample_Barcode' in header:
             case_id_column = 'Tumor_Sample_Barcode'
         elif properties['datatype'] == SEG_DATATYPE:
@@ -450,6 +455,7 @@ def organize_study_files(study_directory):
         # load properties from meta file and case lists
         full_filepath = os.path.join(study_directory, f)
         if 'meta' in f:
+            print('Loading properties for file %s' % f)
             study_files[full_filepath] = load_properties(study_directory, full_filepath, False)
         elif CASE_LIST_DIRNAME in f:
             for clf in os.listdir(full_filepath):
@@ -467,10 +473,14 @@ def load_properties(study_directory, filename, is_case_list):
     properties = {}
     data_file = open(filename, 'rU')
     for line in data_file:
+        if not line.strip():
+            continue
         prop_name = line.split(':')[0]
         prop_value = line.split(':')[1].strip()
         properties[prop_name] = prop_value
     data_file.close()
+    if not 'data_filename' in properties:
+        properties['data_filename'] = os.path.basename(filename).replace('meta', 'data')
 
     if is_case_list:
         properties['datatype'] = CASE_LIST_DATATYPE
@@ -479,9 +489,14 @@ def load_properties(study_directory, filename, is_case_list):
     else:
         properties['data_filename'] = os.path.join(study_directory, properties['data_filename'])
 
+    if 'meta_gene_matrix' in os.path.basename(filename):
+        properties['genetic_alteration_type'] = 'GENE_MATRIX'
+        properties['datatype'] = 'GENE_MATRIX'
+    if properties.get('datatype', '') == SEG_DATATYPE:
+        properties['genetic_alteration_type'] = SEG_DATATYPE
     # if MAF meta file then choose uniprot or mskcc maf if exists if regular MAF file does not exist
     # both mskcc and uniprot MAFs should contain the same samples so the selection is arbitrary
-    if properties['datatype'] == 'MAF':
+    if properties.get('datatype','') == 'MAF':
         if not os.path.exists(properties['data_filename']):
             for maf_filename in [MAF_GENERAL_FILE_PATTERN, MAF_MSKCC_FILE_PATTERN, MAF_UNIPROT_FILE_PATTERN]:
                 if os.path.exists(os.path.join(study_directory, maf_filename)):
